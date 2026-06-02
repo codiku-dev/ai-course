@@ -1,0 +1,20 @@
+// gitgnore for node project
+
+# node_modules
+node_modules
+
+# bun
+bun.lockb
+
+# bun
+bun.lockb
+
+# bun
+bun.lockb
+
+
+# corpus-17mb.txt
+corpus-17mb.txt
+
+# corpus-for-tokenizer-7KChar.txt
+corpus-for-tokenizer-7KChar.txt

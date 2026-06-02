@@ -5,5 +5,5 @@ const tokenizer = new Tokenizer({ withLogger: true, targetVocabSize: 1000, minPa
 // tokenizer.loadCorpusAsArray("../corpus-17mb.txt");
 // tokenizer.generateVocabulary();
 tokenizer.loadData({ pathVocabulary: "vocabulary-js.json", pathMerge: "merge-pairs-js.json" });
-
-console.log(tokenizer.decode([1556, 8, 762, 8, 2966, 8, 441]));
+tokenizer.decode([1556, 8, 762, 8, 2966, 8, 441])
+tokenizer.encode("Hello, world!")

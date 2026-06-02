@@ -7,7 +7,7 @@ export class Tokenizer {
     tokens: string[] = [];
     vocabulary: Map<string, number> = new Map();
     reverseVocabulary: Map<number, string> = new Map();
-    mergePairs: Array<[string, string]> = [];
+    mergePairs: Map<string, number> = new Map();
     targetVocabSize: number;
     minPairFrequency: number;
     maxTokenLength: number;
@@ -24,22 +24,22 @@ export class Tokenizer {
         const corpus = fs.readFileSync(path, 'utf8');
         this.tokens = corpus.replace(/\0/g, '').split('');
         if (this.withLogger) {
-            console.log(`Loaded ${this.tokens.length} characters`)
+            console.log(`Tokenizer: Loaded ${this.tokens.length} characters`)
         }
     }
 
     generateVocabulary() {
+        if (this.withLogger) {
+            console.log("Tokenizer: Generating vocabulary...");
+        }
         let vocabTokenId = 0
         while (this.vocabulary.size < this.targetVocabSize) {
-            if (this.withLogger) {
-                console.log(`Generating vocabulary... ${this.vocabulary.size} => Objective is ${this.targetVocabSize}`)
-            }
             const pairsWithCounts = this.pairCount()
             const bestPair = this.getBestPair(pairsWithCounts)
 
             if (bestPair === null) { break };
             if (!bestPair.left || bestPair.left.length + bestPair.right.length > this.maxTokenLength || bestPair.left.length === 0 || bestPair.right.length === 0) break;
-            this.mergePairs.push([bestPair.left, bestPair.right])
+            this.mergePairs.set(bestPair.left + '\0' + bestPair.right, this.mergePairs.size)
             this.vocabulary.set(bestPair.left + bestPair.right, vocabTokenId)
             vocabTokenId++
             this.replaceAdjacentPairInTokenSCorpus(bestPair.left, bestPair.right)
@@ -50,8 +50,12 @@ export class Tokenizer {
         this.vocabulary = vocabularyMap;
         this.buildReverseVocabulary();
         fs.writeFileSync('vocabulary-js.json', JSON.stringify(vocabularyAsObject, null, 2));
-        // save merge pairs as json
-        fs.writeFileSync('merge-pairs-js.json', JSON.stringify(this.mergePairs, null, 2));
+        // save merge pairs as an associative object { "left\0right": rank }
+        const mergePairsAsObject = Object.fromEntries(this.mergePairs);
+        fs.writeFileSync('merge-pairs-js.json', JSON.stringify(mergePairsAsObject, null, 2));
+        if (this.withLogger) {
+            console.log(`Tokenizer: Generated vocabulary containing ${this.vocabulary.size} tokens entries`)
+        }
     }
 
     private asTokenPair(key: string): TokenPair {
@@ -114,25 +118,62 @@ export class Tokenizer {
         this.vocabulary = vocabularyMap;
         this.buildReverseVocabulary();
         const mergePairs = fs.readFileSync(pathMerge, 'utf8');
-        this.mergePairs = JSON.parse(mergePairs);
+        const parsedMergePairs = JSON.parse(mergePairs);
+        this.mergePairs = new Map<string, number>(Object.entries(parsedMergePairs) as [string, number][]);
 
-        console.log(`Loaded vocabulary containing ${this.vocabulary.size} tokens entries`)
-        console.log(`Loaded reverse vocabulary containing ${this.reverseVocabulary.size} tokens entries`)
-        console.log(`Loaded merge pairs containing ${this.mergePairs.length} pairs entries`)
-        // if (pathEmbeddings) {
-        //     const embeddings = fs.readFileSync(pathEmbeddings, 'utf8');
-        //     this.embeddings = JSON.parse(embeddings);
-        // }
+        if (this.withLogger) {
+            if (this.vocabulary.size > 0) {
+                console.log(`Tokenizer: Loaded vocabulary containing ${this.vocabulary.size} tokens entries`)
+            }
+        }
+
     }
 
 
 
     decode(tokenIdList: number[]): string {
+        console.time("decode()");
         let decoded = "";
         for (const tokenId of tokenIdList) {
             decoded += this.reverseVocabulary.get(tokenId);
         }
+        if (this.withLogger) {
+            console.log("Tokenizer: decode() result :", decoded);
+            console.timeEnd("decode()");
+
+        }
         return decoded;
+    }
+
+    encode(text: string): number[] {
+        console.time("encode()");
+        const tokenIds: number[] = [];
+        //The tokens that will evolve
+        const newTokens = text.split('');
+        // On parcours les paires de merge (la Map garde l'ordre d'insertion = ordre des index)
+        // Looping trough each pair
+        for (const key of this.mergePairs.keys()) {
+            // On récupere la partie gauche et droite de la paire de merge
+            const { left, right } = this.asTokenPair(key);
+
+            // On parcours l'input de texte
+            for (let j = 0; j < newTokens.length; j++) {
+                // On regarde si on trouve cote a cote la paire de merge
+                if (newTokens[j] === left && newTokens[j + 1] === right) {
+                    // On remplace la paire de merge par le nouveau token
+                    newTokens.splice(j, 2, left + right);
+                }
+            }
+        }
+        // On parcours les tokens et on
+        for (const token of newTokens) {
+            tokenIds.push(this.vocabulary.get(token) || 0);
+        }
+        if (this.withLogger) {
+            console.log("Tokenizer: encode() - ", tokenIds);
+            console.timeEnd("encode()");
+        }
+        return tokenIds;
     }
 
     private buildReverseVocabulary() {
