@@ -32,9 +32,7 @@ export class Tokenizer {
     }
 
     generateVocabulary() {
-        if (this.withLogger) {
-            console.log("Tokenizer - Generating vocabulary...");
-        }
+
         let vocabTokenId = 0
         // Reserve the first id for the unknown token
         this.vocabulary.set(UNKNOWN_TOKEN, vocabTokenId)
@@ -67,9 +65,7 @@ export class Tokenizer {
         // save merge pairs as an associative object { "left\0right": rank }
         const mergePairsAsObject = Object.fromEntries(this.mergePairs);
         fs.writeFileSync(`merge-pairs-js-${new Date().toISOString()}.json`, JSON.stringify(mergePairsAsObject, null, 2));
-        if (this.withLogger) {
-            console.log(`Tokenizer - Generated vocabulary containing ${this.vocabulary.size} tokens entries`)
-        }
+
     }
 
     private asTokenPair(key: string): TokenPair {
@@ -137,11 +133,7 @@ export class Tokenizer {
         const parsedMergePairs = JSON.parse(mergePairs);
         this.mergePairs = new Map<string, number>(Object.entries(parsedMergePairs) as [string, number][]);
 
-        if (this.withLogger) {
-            if (this.vocabulary.size > 0) {
-                console.log(`Tokenizer - Loaded vocabulary containing ${this.vocabulary.size} tokens entries`)
-            }
-        }
+
 
     }
 
@@ -152,19 +144,11 @@ export class Tokenizer {
         for (const tokenId of tokenIdList) {
             decoded += this.reverseVocabulary.get(tokenId) ?? UNKNOWN_TOKEN;
         }
-        if (this.withLogger) {
-            console.log("Tokenizer - decode() result :", decoded);
-            console.log("Detail of each token id :");
-            for (const tokenId of tokenIdList) {
-                console.log(`- ${tokenId} : "${this.reverseVocabulary.get(tokenId)}"`);
-            }
 
-        }
         return decoded;
     }
 
     encode(text: string): number[] {
-        console.time("encode()");
 
         const tokenIds: number[] = [];
 
@@ -231,15 +215,8 @@ export class Tokenizer {
             );
         }
 
-        if (this.withLogger) {
-            console.log(`Tokenizer - encode("${text}") : ${tokenIds}`);
-            console.log("Detail of each token id :");
-            for (const tokenId of tokenIds) {
-                console.log(`- ${tokenId} : "${this.reverseVocabulary.get(tokenId)}"`);
-            }
-        }
 
-        console.timeEnd("encode()");
+
 
         return tokenIds;
     }
