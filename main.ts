@@ -1,5 +1,6 @@
 import { Tokenizer } from "./tokenizer";
-import { DataSet } from "./dataset-v1";
+import { DataSetV1 } from "./dataset-v1";
+import { DataSetV2 } from "./dataset-v2";
 import fs from "fs";
 const tokenizer = new Tokenizer({ withLogger: false, targetVocabSize: 4000, minPairFrequency: 5, maxTokenLength: 20 });
 // Generate vocabulary from corpus
@@ -24,7 +25,7 @@ const trainingTokensArray = []
 for (const word of trainingStringArray) {
     trainingTokensArray.push(tokenizer.encode(word))
 }
-const numberOfPredictionTaskPerRow = 4;
+const numberOfPredictionTaskPerRow = 5;
 const stride = 1
 const tensorInput = []
 const tensorOutput = []
@@ -53,5 +54,11 @@ const tensorOutput = []
 
 // Creation du dataset a la place
 
-const dataset = new DataSet("data/the-verdict.txt", tokenizer, numberOfPredictionTaskPerRow, stride);
-console.log(dataset.getDecodedInputRowByIndex(1))
+// console.log("Params : numberOfPredictionTaskPerRow = ", numberOfPredictionTaskPerRow, "stride = ", stride)
+// const dataset = new DataSetV1("data/the-verdict-small.txt", tokenizer, numberOfPredictionTaskPerRow, stride);
+// console.table(dataset.toStringInputTensor())
+// console.log("\n\n\n")
+// console.table(dataset.toStringOutputTensor())
+
+const datasetV2 = new DataSetV2("data/the-verdict-small.txt", tokenizer, numberOfPredictionTaskPerRow, stride);
+console.log(datasetV2.getInputRowByIndex(0))
