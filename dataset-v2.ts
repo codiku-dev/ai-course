@@ -5,65 +5,104 @@ import { Tensor, Rank, tensor2d } from "@tensorflow/tfjs";
 import fs from "fs";
 
 export class DataSetV2 {
-    private readonly trainingTokensArray: number[] = [];
-    private readonly inputIdTensor: Tensor<Rank.R2>;
-    private readonly outputIdTensor: Tensor<Rank.R2>;
-    private readonly tokenizer: Tokenizer;
+  private readonly trainingTokensArray: number[] = [];
+  private readonly inputSamples: Tensor<Rank.R2>;
+  private readonly targetSamples: Tensor<Rank.R2>;
+  private readonly tokenizer: Tokenizer;
 
-    constructor(filePath: string, tokenizer: Tokenizer, numberOfItemsPerRow: number, stride: number) {
-        this.tokenizer = tokenizer;
+  constructor(
+    filePath: string,
+    tokenizer: Tokenizer,
+    numberOfItemsPerRow: number,
+    stride: number,
+  ) {
+    this.tokenizer = tokenizer;
 
-        this.loadData(filePath);
+    this.loadData(filePath);
 
-        const inputMatrix: number[][] = [];
-        const outputMatrix: number[][] = [];
-        for (let i = 0; i + numberOfItemsPerRow + 1 <= this.trainingTokensArray.length; i += stride) {
-            inputMatrix.push(this.trainingTokensArray.slice(i, i + numberOfItemsPerRow));
-            outputMatrix.push(this.trainingTokensArray.slice(i + 1, i + numberOfItemsPerRow + 1));
-        }
-        // One 2D tensor for all inputs and one for all targets (the course's x and y)
-        this.inputIdTensor = tensor2d(inputMatrix);
-        this.outputIdTensor = tensor2d(outputMatrix);
+    const inputSample: number[][] = [];
+    const targetSample: number[][] = [];
+    for (
+      let i = 0;
+      i + numberOfItemsPerRow + 1 <= this.trainingTokensArray.length;
+      i += stride
+    ) {
+      inputSample.push(
+        this.trainingTokensArray.slice(i, i + numberOfItemsPerRow),
+      );
+      targetSample.push(
+        this.trainingTokensArray.slice(i + 1, i + numberOfItemsPerRow + 1),
+      );
     }
+    // One 2D tensor for all inputs and one for all targets (the course's x and y)
+    this.inputSamples = tensor2d(inputSample);
+    this.targetSamples = tensor2d(targetSample);
+  }
 
-    private loadData(filePath: string) {
-        const text = fs.readFileSync(filePath, "utf8");
-        const trainingStringArray = text.split(/(?<= )/)
-        for (const word of trainingStringArray) {
-            // We flatten the array of tokens to have a single array of tokens
-            this.trainingTokensArray.push(...this.tokenizer.encode(word))
-        }
+  private loadData(filePath: string) {
+    const text = fs.readFileSync(filePath, "utf8");
+    const trainingStringArray = text.split(/(?<= )/);
+    for (const word of trainingStringArray) {
+      // We flatten the array of tokens to have a single array of tokens
+      this.trainingTokensArray.push(...this.tokenizer.encode(word));
     }
+  }
 
-    public getInputTensor(): Tensor<Rank.R2> {
-        return this.inputIdTensor;
-    }
+  public getInputSamples(): Tensor<Rank.R2> {
+    return this.inputSamples;
+  }
 
-    public getOutputTensor(): Tensor<Rank.R2> {
-        return this.outputIdTensor;
-    }
+  public getTargetSamples(): Tensor<Rank.R2> {
+    return this.targetSamples;
+  }
 
-    public getInputRowByIndex(index: number): number[] {
-        return this.inputIdTensor.arraySync()[index];
-    }
+  public getInputSampleByIndex(index: number): number[] {
+    return this.inputSamples.arraySync()[index];
+  }
 
-    public getOutputRowByIndex(index: number): number[] {
-        return this.outputIdTensor.arraySync()[index];
-    }
+  public getTargetSampleByIndex(index: number): number[] {
+    return this.targetSamples.arraySync()[index];
+  }
 
-    public getDecodedInputRowByIndex(index: number): string[] {
-        return this.getInputRowByIndex(index).map(token => this.tokenizer.decode([token]));
-    }
+  public getDecodedInputSampleByIndex(index: number): string[] {
+    return this.getInputSampleByIndex(index).map((token) =>
+      this.tokenizer.decode([token]),
+    );
+  }
 
-    public getDecodedOutputRowByIndex(index: number): string[] {
-        return this.getOutputRowByIndex(index).map(token => this.tokenizer.decode([token]));
-    }
+  public getDecodedTargetSampleByIndex(index: number): string[] {
+    return this.getTargetSampleByIndex(index).map((token) =>
+      this.tokenizer.decode([token]),
+    );
+  }
 
-    public getShape(): [number, number] {
-        return this.inputIdTensor.shape;
-    }
+  public getInputValues(): number[][] {
+    return this.inputSamples.arraySync();
+  }
+  public getTargetValues(): number[][] {
+    return this.targetSamples.arraySync();
+  }
 
-    public getLength(): number {
-        return this.trainingTokensArray.length;
-    }
+  public getShape(): [number, number] {
+    return this.inputSamples.shape;
+  }
+
+  public getLength(): number {
+    return this.trainingTokensArray.length;
+  }
+
+  public getValues(): { inputs: number[][]; targets: number[][] } {
+    return {
+      inputs: this.getInputValues(),
+      targets: this.getTargetValues(),
+    };
+  }
+
+  public log() {
+    const values = this.getValues();
+    console.log("Inputs");
+    console.table(values.inputs);
+    console.log("\nTargets");
+    console.table(values.targets);
+  }
 }

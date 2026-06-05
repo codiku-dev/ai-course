@@ -2,11 +2,20 @@ import { Tokenizer } from "./tokenizer";
 import { DataSetV1 } from "./dataset-v1";
 import { DataSetV2 } from "./dataset-v2";
 import fs from "fs";
-const tokenizer = new Tokenizer({ withLogger: false, targetVocabSize: 4000, minPairFrequency: 5, maxTokenLength: 20 });
+import { DataLoader } from "./data-loader";
+const tokenizer = new Tokenizer({
+  withLogger: false,
+  targetVocabSize: 4000,
+  minPairFrequency: 5,
+  maxTokenLength: 20,
+});
 // Generate vocabulary from corpus
 // tokenizer.loadCorpusAsArray("data/corpus-13mb.txt");
 // tokenizer.generateVocabulary();
-tokenizer.loadData({ pathVocabulary: "vocabulary-js.json", pathMerge: "merge-pairs-js.json" });
+tokenizer.loadData({
+  pathVocabulary: "vocabulary-js.json",
+  pathMerge: "merge-pairs-js.json",
+});
 // tokenizer.decode([1635, 15])
 // tokenizer.encode("hello")
 
@@ -20,15 +29,17 @@ tokenizer.loadData({ pathVocabulary: "vocabulary-js.json", pathMerge: "merge-pai
 // First we tokenize the corpus
 // On découpe en gardant l'espace collé au mot (split après chaque espace)
 // => rapide (BPE par mot) ET les espaces sont conservés pour le round-trip
-const trainingStringArray = fs.readFileSync("data/the-verdict.txt", "utf8").split(/(?<= )/)
-const trainingTokensArray = []
+const trainingStringArray = fs
+  .readFileSync("data/the-verdict.txt", "utf8")
+  .split(/(?<= )/);
+const trainingTokensArray = [];
 for (const word of trainingStringArray) {
-    trainingTokensArray.push(tokenizer.encode(word))
+  trainingTokensArray.push(tokenizer.encode(word));
 }
 const numberOfPredictionTaskPerRow = 5;
-const stride = 1
-const tensorInput = []
-const tensorOutput = []
+const stride = 1;
+//const tensorInput = [];
+//const tensorOutput = [];
 
 // Approche avec mots et sans tensors juste avec tableau de input et target ( plusieurs prédition par ligne)
 
@@ -47,7 +58,6 @@ const tensorOutput = []
 //     tensorOutput.push(outputRow)
 // }
 
-
 // console.table(tensorInput)
 // console.log("\n\n\n")
 // console.table(tensorOutput)
@@ -60,5 +70,13 @@ const tensorOutput = []
 // console.log("\n\n\n")
 // console.table(dataset.toStringOutputTensor())
 
-const datasetV2 = new DataSetV2("data/the-verdict-small.txt", tokenizer, numberOfPredictionTaskPerRow, stride);
-console.log(datasetV2.getInputRowByIndex(0))
+const datasetV2 = new DataSetV2(
+  "data/the-verdict-xsmall.txt",
+  tokenizer,
+  numberOfPredictionTaskPerRow,
+  stride,
+);
+const dataLoader = new DataLoader(datasetV2, 2);
+datasetV2.log();
+dataLoader.next();
+dataLoader.log();
