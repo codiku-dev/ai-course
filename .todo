@@ -1,0 +1,2 @@
+Transformer data loader en tensor et comprendre pourquoi le getLength de  data set est pas bon.
+Il faut un getHeight getWidth et getTokensCount
