@@ -76,7 +76,16 @@ const datasetV2 = new DataSetV2(
   numberOfPredictionTaskPerRow,
   stride,
 );
-const dataLoader = new DataLoader(datasetV2, 2);
-datasetV2.log();
-dataLoader.next();
-dataLoader.log();
+
+const dataLoader = new DataLoader({
+  dataset: datasetV2,
+  batch_size: 2,
+  shuffle: false,
+});
+
+const firstBatch = dataLoader.next();
+dataLoader.logBatch()
+const secondBatch = dataLoader.next();
+dataLoader.logBatch();
+
+

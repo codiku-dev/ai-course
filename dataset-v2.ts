@@ -51,9 +51,26 @@ export class DataSetV2 {
   public getInputSamples(): Tensor<Rank.R2> {
     return this.inputSamples;
   }
-
+  public getInputSamplesTensorByIndexes(indexes: number[]): Tensor<Rank.R2> {
+    return this.inputSamples.gather(indexes);
+  }
+  public getTargetSamplesTensorByIndexes(indexes: number[]): Tensor<Rank.R2> {
+    return this.targetSamples.gather(indexes);
+  }
   public getTargetSamples(): Tensor<Rank.R2> {
     return this.targetSamples;
+  }
+
+  public getDecodedInputSamples(): string[][] {
+    return this.getInputValues().map((row) =>
+      row.map((token) => this.tokenizer.decode([token])),
+    );
+  }
+
+  public getDecodedTargetSamples(): string[][] {
+    return this.getTargetValues().map((row) =>
+      row.map((token) => this.tokenizer.decode([token])),
+    );
   }
 
   public getInputSampleByIndex(index: number): number[] {
@@ -83,11 +100,15 @@ export class DataSetV2 {
     return this.targetSamples.arraySync();
   }
 
-  public getShape(): [number, number] {
-    return this.inputSamples.shape;
+  public getHeight(): number {
+    return this.inputSamples.shape[0];
   }
 
-  public getLength(): number {
+  public getWidth(): number {
+    return this.inputSamples.shape[1];
+  }
+
+  public getTokensCount(): number {
     return this.trainingTokensArray.length;
   }
 
@@ -98,8 +119,23 @@ export class DataSetV2 {
     };
   }
 
+  public getDecodedValues(): { inputs: string[][]; targets: string[][] } {
+    return {
+      inputs: this.getDecodedInputSamples(),
+      targets: this.getDecodedTargetSamples(),
+    };
+  }
+
   public log() {
     const values = this.getValues();
+    console.log("Inputs");
+    console.table(values.inputs);
+    console.log("\nTargets");
+    console.table(values.targets);
+  }
+
+  public logDecoded() {
+    const values = this.getDecodedValues();
     console.log("Inputs");
     console.table(values.inputs);
     console.log("\nTargets");
