@@ -2,7 +2,9 @@ import { Tokenizer } from "./tokenizer";
 import { DataSetV1 } from "./dataset-v1";
 import { DataSetV2 } from "./dataset-v2";
 import fs from "fs";
-import { DataLoader } from "./data-loader";
+// import { DataLoader } from "./data-loader";
+import { DataLoader as DataLoaderV2 } from "./data-loader-v2";
+import { DataSetV3 } from "./dataset-v3";
 const tokenizer = new Tokenizer({
   withLogger: false,
   targetVocabSize: 4000,
@@ -36,7 +38,7 @@ const trainingTokensArray = [];
 for (const word of trainingStringArray) {
   trainingTokensArray.push(tokenizer.encode(word));
 }
-const numberOfPredictionTaskPerRow = 5;
+const numberOfPredictionTaskPerRow = 4;
 const stride = 1;
 //const tensorInput = [];
 //const tensorOutput = [];
@@ -70,22 +72,22 @@ const stride = 1;
 // console.log("\n\n\n")
 // console.table(dataset.toStringOutputTensor())
 
-const datasetV2 = new DataSetV2(
+const datasetV3 = new DataSetV3(
   "data/the-verdict-xsmall.txt",
   tokenizer,
-  numberOfPredictionTaskPerRow,
-  stride,
 );
 
-const dataLoader = new DataLoader({
-  dataset: datasetV2,
+const dataLoader = new DataLoaderV2({
+  dataset: datasetV3,
   batch_size: 2,
   shuffle: false,
+  numberOfItemsPerRow: numberOfPredictionTaskPerRow,
+  stride: stride,
 });
 
 const firstBatch = dataLoader.next();
-dataLoader.logBatch()
+dataLoader.logLastBatch()
 const secondBatch = dataLoader.next();
-dataLoader.logBatch();
+dataLoader.logLastBatch();
 
 
