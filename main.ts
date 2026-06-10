@@ -81,13 +81,14 @@ const dataLoader = new DataLoaderV2({
   dataset: datasetV3,
   batch_size: 2,
   shuffle: false,
-  numberOfItemsPerRow: numberOfPredictionTaskPerRow,
+  number_items_per_row: numberOfPredictionTaskPerRow,
   stride: stride,
+  drop_last: true,
 });
 
 const firstBatch = dataLoader.next();
-dataLoader.logLastBatch()
+// dataLoader.logLastBatch()
 const secondBatch = dataLoader.next();
-dataLoader.logLastBatch();
+dataLoader.logLastBatchAsDecoded();
 
 

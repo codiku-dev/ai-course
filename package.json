@@ -11,6 +11,7 @@
   "description": "",
   "dependencies": {
     "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "@types/node": "^25.9.1",
     "tiktoken": "^1.0.22"
   }

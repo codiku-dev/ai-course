@@ -1,47 +1,47 @@
-import { Rank, Tensor } from "@tensorflow/tfjs";
-import { DataSetV2 } from "./dataset-v2";
 import { DataSetV3 } from "./dataset-v3";
-
+import { Tensor, tensor2d } from "@tensorflow/tfjs"
+import { Rank } from "@tensorflow/tfjs";
 type Batch = {
-  inputSamples: number[][];
-  targetSamples: number[][];
+  input_samples: Tensor<Rank.R2>;
+  target_samples: Tensor<Rank.R2>;
 };
 
 type Props = {
   dataset: DataSetV3;
   batch_size: number;
   shuffle?: boolean;
-  numberOfItemsPerRow: number;
+  number_items_per_row: number;
   stride: number;
+  drop_last: boolean
 };
 
 export class DataLoader {
   private readonly dataset: DataSetV3;
   private batch_size: number;
   private current_batch_index = 0;
-
-  private start_index = 0;
-  private end_index = 0;
+  private drop_last: boolean = true
   // Shuffled index list
   private random_start_index_list: number[] = [];
   private max_batch: number = 0
   private stride: number;
-  private tensorHeight: number;
-  private tensorWidth: number;
+  private tensor_height: number;
+  private tensor_width: number;
   private start_index_input = 0;
   private current_random_start_index = 0;
 
   private current_batch: Batch = {
-    inputSamples: [],
-    targetSamples: [],
+    input_samples: tensor2d([[], []]),
+    target_samples: tensor2d([[], []]),
   };
-  constructor({ dataset, batch_size, shuffle = true, numberOfItemsPerRow, stride }: Props) {
+  constructor({ dataset, batch_size, shuffle = true, number_items_per_row, stride, drop_last }: Props) {
     this.dataset = dataset;
     this.batch_size = batch_size;
-    this.tensorWidth = numberOfItemsPerRow;
+    this.tensor_width = number_items_per_row;
     this.stride = stride;
-    this.tensorHeight = this.dataset.getLength() / this.tensorWidth;
-    this.max_batch = Math.ceil(this.tensorHeight / this.batch_size)
+    this.tensor_height = this.dataset.getLength() / this.tensor_width;
+    // we ceil because 
+    this.max_batch = drop_last ? Math.ceil(this.tensor_height / this.batch_size) : Math.floor(this.tensor_height / this.batch_size)
+    this.drop_last = drop_last
 
     // Use a shuffled index list to iterate over the dataset
     this.initSampleStartIndexList();
@@ -51,10 +51,10 @@ export class DataLoader {
   }
 
   next(): Batch {
-    const inputSamples: number[][] = [];
-    const targetSamples: number[][] = [];
+    const input_samples: number[][] = [];
+    const target_samples: number[][] = [];
 
-    const encodedTokensArray = this.dataset.getEncodedTokensArray();
+    const encoded_tokens_array = this.dataset.getEncodedTokensArray();
 
     for (let batch_index = 0; batch_index < this.batch_size; batch_index++) { // POur chaque batch
 
@@ -68,17 +68,17 @@ export class DataLoader {
       this.current_random_start_index++;
 
       // 0, 0+4 => (0,4)
-      inputSamples.push(
-        encodedTokensArray.slice(
+      input_samples.push(
+        encoded_tokens_array.slice(
           start,
-          start + this.tensorWidth
+          start + this.tensor_width
         )
       );
       // (1,5)
-      targetSamples.push(
-        encodedTokensArray.slice(
+      target_samples.push(
+        encoded_tokens_array.slice(
           start + 1,
-          start + this.tensorWidth + 1
+          start + this.tensor_width + 1
         )
       );
     }
@@ -87,13 +87,10 @@ export class DataLoader {
 
     this.current_batch_index++;
     this.current_batch = {
-      inputSamples,
-      targetSamples,
+      input_samples: tensor2d(input_samples),
+      target_samples: tensor2d(target_samples),
     };
-    return {
-      inputSamples,
-      targetSamples,
-    };
+    return this.current_batch
   }
 
   // Is there another batch to load ?
@@ -123,7 +120,7 @@ export class DataLoader {
     // long as the input slice [start, start + width] AND the shifted target
     // slice [start + 1, start + width + 1] still fit inside the corpus.
     const datasetLength = this.dataset.getLength();
-    const lastValidStart = datasetLength - this.tensorWidth - 1;
+    const lastValidStart = datasetLength - this.tensor_width - 1;
     this.random_start_index_list = [];
     for (let start = 0; start <= lastValidStart; start += this.stride) {
       this.random_start_index_list.push(start);
@@ -140,14 +137,9 @@ export class DataLoader {
 
     console.log("--- Batch number: ", this.current_batch_index, " ---");
     console.log("Input samples");
-    console.table(this.current_batch.inputSamples.map(decodeTokensSeparately));
+    console.table(this.current_batch.input_samples.arraySync().map(decodeTokensSeparately));
     console.log("\nTarget samples");
-    console.table(this.current_batch.targetSamples.map(decodeTokensSeparately));
+    console.table(this.current_batch.target_samples.arraySync().map(decodeTokensSeparately));
   }
-  logLastBatch() {
-    console.log("Input samples");
-    console.table(this.current_batch.inputSamples);
-    console.log("\nTarget samples");
-    console.table(this.current_batch.targetSamples);
-  }
+
 }
