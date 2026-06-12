@@ -39,6 +39,9 @@ for (const word of trainingStringArray) {
   trainingTokensArray.push(tokenizer.encode(word));
 }
 const numberOfPredictionTaskPerRow = 4;
+// A bigger stride will have less redundant data because the windows will overlap less.
+// It will reduce the cost of training
+// But we'r doing less combinations of tokens to predict.
 const stride = 1;
 //const tensorInput = [];
 //const tensorOutput = [];
