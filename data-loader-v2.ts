@@ -1,4 +1,4 @@
-import { Rank, Tensor } from "@tensorflow/tfjs";
+import { Rank, Tensor, tensor2d } from "@tensorflow/tfjs";
 import { DataSetV2 } from "./dataset-v2";
 import { DataSetV3 } from "./dataset-v3";
 
@@ -50,7 +50,7 @@ export class DataLoader {
     }
   }
 
-  next(): Batch {
+  next(): { inputSamples: Tensor<Rank.R2>, targetSamples: Tensor<Rank.R2> } {
     const inputSamples: number[][] = [];
     const targetSamples: number[][] = [];
 
@@ -91,8 +91,10 @@ export class DataLoader {
       targetSamples,
     };
     return {
-      inputSamples,
-      targetSamples,
+      // The reason we use int32 is because the embeddings are int32 but tensor2d 
+      // converts the input to float32 by default so it's going to make the ids float which is not what we want
+      inputSamples: tensor2d(inputSamples, undefined, "int32"),
+      targetSamples: tensor2d(targetSamples, undefined, "int32"),
     };
   }
 

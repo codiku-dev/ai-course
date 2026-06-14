@@ -9,129 +9,125 @@ export class Tokenizer {
 
     tokens: string[] = [];
     vocabulary: Map<string, number> = new Map();
-    reverseVocabulary: Map<number, string> = new Map();
-    mergePairs: Map<string, number> = new Map();
-    targetVocabSize: number;
-    minPairFrequency: number;
-    maxTokenLength: number;
-    withLogger?: boolean;
+    reverse_vocabulary: Map<number, string> = new Map();
+    merge_pairs: Map<string, number> = new Map();
 
-    constructor({ withLogger = false, targetVocabSize = 3000, minPairFrequency = 5, maxTokenLength = 20 }: { withLogger: boolean, targetVocabSize: number, minPairFrequency: number, maxTokenLength: number }) {
-        this.targetVocabSize = targetVocabSize;
-        this.minPairFrequency = minPairFrequency;
-        this.maxTokenLength = maxTokenLength;
-        this.withLogger = withLogger;
+    with_logger?: boolean;
+
+    constructor({ with_logger = false }: { with_logger: boolean }) {
+        this.with_logger = with_logger;
     }
 
     loadCorpusAsArray(path: string) {
         const corpus = fs.readFileSync(path, 'utf8');
         this.tokens = corpus.replace(/\0/g, '').split('');
-        if (this.withLogger) {
+        if (this.with_logger) {
             console.log(`Tokenizer - Loaded ${this.tokens.length} characters`)
         }
     }
 
-    generateVocabulary() {
+    generateVocabulary(config: { target_vocab_size: number, min_pair_frequency: number, max_token_length: number }) {
+        const { target_vocab_size, min_pair_frequency, max_token_length } = config;
 
-        let vocabTokenId = 0
+        let vocab_token_id = 0
         // Reserve the first id for the unknown token
-        this.vocabulary.set(UNKNOWN_TOKEN, vocabTokenId)
-        vocabTokenId++
+        this.vocabulary.set(UNKNOWN_TOKEN, vocab_token_id)
+        vocab_token_id++
         // Seed the vocabulary with the base occidental characters first
         for (const char of BASE_VOCABULARY) {
 
             if (!this.vocabulary.has(char)) {
-                this.vocabulary.set(char, vocabTokenId)
-                vocabTokenId++
+                this.vocabulary.set(char, vocab_token_id)
+                vocab_token_id++
             }
         }
-        while (this.vocabulary.size < this.targetVocabSize) {
-            console.log(`Vocabulary size : ${this.vocabulary.size} => Target is ${this.targetVocabSize}`)
-            const pairsWithCounts = this.pairCount()
-            const bestPair = this.getBestPair(pairsWithCounts)
+        while (this.vocabulary.size < target_vocab_size) {
+            console.log(`Vocabulary size : ${this.vocabulary.size} => Target is ${target_vocab_size}`)
+            const pairs_with_counts = this.pairCount()
+            const best_pair = this.getBestPair(pairs_with_counts, max_token_length, min_pair_frequency)
 
-            if (bestPair === null) { break };
-            this.mergePairs.set(bestPair.left + '\0' + bestPair.right, this.mergePairs.size)
-            this.vocabulary.set(bestPair.left + bestPair.right, vocabTokenId)
-            vocabTokenId++
-            this.replaceAdjacentPairInTokenSCorpus(bestPair.left, bestPair.right)
+            if (best_pair === null) { break };
+            this.merge_pairs.set(best_pair.left + '\0' + best_pair.right, this.merge_pairs.size)
+            this.vocabulary.set(best_pair.left + best_pair.right, vocab_token_id)
+            vocab_token_id++
+            this.replaceAdjacentPairInTokenSCorpus(best_pair.left, best_pair.right)
         }
         // save vocabulary as json
-        const vocabularyAsObject = Object.fromEntries(this.vocabulary);
-        const vocabularyMap = new Map<string, number>(Object.entries(vocabularyAsObject) as [string, number][]);
-        this.vocabulary = vocabularyMap;
+        const vocabulary_as_object = Object.fromEntries(this.vocabulary);
+        const vocabulary_map = new Map<string, number>(Object.entries(vocabulary_as_object) as [string, number][]);
+        this.vocabulary = vocabulary_map;
         this.buildReverseVocabulary();
-        fs.writeFileSync(`vocabulary-js-${new Date().toISOString()}.json`, JSON.stringify(vocabularyAsObject, null, 2));
+        fs.writeFileSync(`vocabulary-js-${new Date().toISOString()}.json`, JSON.stringify(vocabulary_as_object, null, 2));
         // save merge pairs as an associative object { "left\0right": rank }
-        const mergePairsAsObject = Object.fromEntries(this.mergePairs);
-        fs.writeFileSync(`merge-pairs-js-${new Date().toISOString()}.json`, JSON.stringify(mergePairsAsObject, null, 2));
+        const merge_pairs_as_object = Object.fromEntries(this.merge_pairs);
+        fs.writeFileSync(`merge-pairs-js-${new Date().toISOString()}.json`, JSON.stringify(merge_pairs_as_object, null, 2));
 
     }
 
     private asTokenPair(key: string): TokenPair {
-        const separatorIndex = key.indexOf('\0');
+        const separator_index = key.indexOf('\0');
         return {
-            left: key.slice(0, separatorIndex),
-            right: key.slice(separatorIndex + 1),
+            left: key.slice(0, separator_index),
+            right: key.slice(separator_index + 1),
         };
     }
 
     private pairCount() {
-        const pairsWithCount = new Map<string, number>();
+        const pairs_with_count = new Map<string, number>();
         for (let i = 0; i < this.tokens.length - 1; i++) {
             const left = this.tokens[i];
             const right = this.tokens[i + 1];
             const key = left + '\0' + right;
-            const oldPairCount = pairsWithCount.get(key) || 0;
-            pairsWithCount.set(key, oldPairCount + 1);
+            const old_pair_count = pairs_with_count.get(key) || 0;
+            pairs_with_count.set(key, old_pair_count + 1);
         }
-        return pairsWithCount;
+        return pairs_with_count;
     }
 
-    private getBestPair(pairMap: Map<string, number>): TokenPair | null {
-        let bestKey = "";
-        let bestCount = 0;
-        for (const [pair, count] of pairMap.entries()) {
-            if (count <= bestCount) continue;
+    private getBestPair(pair_map: Map<string, number>, max_token_length: number, min_pair_frequency: number): TokenPair | null {
+        let best_key = "";
+        let best_count = 0;
+        for (const [pair, count] of pair_map.entries()) {
+            if (count <= best_count) continue;
             const { left, right } = this.asTokenPair(pair);
             // On ignore les paires vides ou qui dépasseraient la longueur max d'un token
-            if (!left || !right || left.length + right.length > this.maxTokenLength) continue;
-            bestKey = pair
-            bestCount = count;
+            if (!left || !right || left.length + right.length > max_token_length) continue;
+            best_key = pair
+            best_count = count;
         }
-        if (bestCount < this.minPairFrequency) {
+        if (best_count < min_pair_frequency) {
             return null
         }
-        return this.asTokenPair(bestKey);
+        return this.asTokenPair(best_key);
     }
 
     private replaceAdjacentPairInTokenSCorpus(left: string, right: string) {
-        const newTokens: string[] = [];
+        const new_tokens: string[] = [];
         for (let i = 0; i < this.tokens.length; i++) {
             if (
                 i < this.tokens.length - 1 &&
                 this.tokens[i] === left &&
                 this.tokens[i + 1] === right
             ) {
-                newTokens.push(left + right);
+                new_tokens.push(left + right);
                 i++
             } else {
-                newTokens.push(this.tokens[i]);
+                new_tokens.push(this.tokens[i]);
             }
         }
-        this.tokens = newTokens;
+        this.tokens = new_tokens;
     }
 
-    loadData(config: { pathVocabulary: string, pathMerge: string, pathEmbeddings?: string }) {
-        const { pathVocabulary, pathMerge, pathEmbeddings } = config;
-        const vocabulary = fs.readFileSync(pathVocabulary, 'utf8');
-        const parsedVocabulary = JSON.parse(vocabulary);
-        const vocabularyMap = new Map<string, number>(Object.entries(parsedVocabulary) as [string, number][]);
-        this.vocabulary = vocabularyMap;
+    loadData(config: { path_vocabulary: string, path_merge: string, path_embeddings?: string }) {
+        const { path_vocabulary, path_merge, path_embeddings } = config;
+        const vocabulary = fs.readFileSync(path_vocabulary, 'utf8');
+        const parsed_vocabulary = JSON.parse(vocabulary);
+        const vocabulary_map = new Map<string, number>(Object.entries(parsed_vocabulary) as [string, number][]);
+        this.vocabulary = vocabulary_map;
         this.buildReverseVocabulary();
-        const mergePairs = fs.readFileSync(pathMerge, 'utf8');
-        const parsedMergePairs = JSON.parse(mergePairs);
-        this.mergePairs = new Map<string, number>(Object.entries(parsedMergePairs) as [string, number][]);
+        const merge_pairs = fs.readFileSync(path_merge, 'utf8');
+        const parsed_merge_pairs = JSON.parse(merge_pairs);
+        this.merge_pairs = new Map<string, number>(Object.entries(parsed_merge_pairs) as [string, number][]);
 
 
 
@@ -139,10 +135,10 @@ export class Tokenizer {
 
 
 
-    decode(tokenIdList: number[]): string {
+    decode(token_id_list: number[]): string {
         let decoded = "";
-        for (const tokenId of tokenIdList) {
-            decoded += this.reverseVocabulary.get(tokenId) ?? UNKNOWN_TOKEN;
+        for (const token_id of token_id_list) {
+            decoded += this.reverse_vocabulary.get(token_id) ?? UNKNOWN_TOKEN;
         }
 
         return decoded;
@@ -150,36 +146,36 @@ export class Tokenizer {
 
     encode(text: string): number[] {
 
-        const tokenIds: number[] = [];
+        const token_ids: number[] = [];
 
         // Tokens qui vont évoluer
-        const evolutivePairsTokensArray = text.split("");
+        const evolutive_pairs_tokens_array = text.split("");
 
         while (true) {
 
-            let bestPairIndex = -1;
-            let bestRank = Number.MAX_SAFE_INTEGER;
+            let best_pair_index = -1;
+            let best_rank = Number.MAX_SAFE_INTEGER;
 
             // Cherche la meilleure paire actuellement présente
 
-            for (let i = 0; i < evolutivePairsTokensArray.length - 1; i++) {
+            for (let i = 0; i < evolutive_pairs_tokens_array.length - 1; i++) {
 
-                // Construit la clé de la paire (pour aller la chercher dans le mergePairs)
+                // Construit la clé de la paire (pour aller la chercher dans le merge_pairs)
                 const key =
-                    evolutivePairsTokensArray[i] +
+                    evolutive_pairs_tokens_array[i] +
                     "\0" +
-                    evolutivePairsTokensArray[i + 1];
+                    evolutive_pairs_tokens_array[i + 1];
 
                 // On récupere son rang
-                const rank = this.mergePairs.get(key);
+                const rank = this.merge_pairs.get(key);
 
                 // Si rang il y'a et que c'est plus petit que le meilleur rang actuel, on met à jour le meilleur rang et l'index de la paire
                 if (
                     rank !== undefined &&
-                    rank < bestRank
+                    rank < best_rank
                 ) {
-                    bestRank = rank;
-                    bestPairIndex = i;
+                    best_rank = rank;
+                    best_pair_index = i;
                 }
             }
 
@@ -187,51 +183,51 @@ export class Tokenizer {
             //  trouvé la meilleure 
             // paire actuellement présente
             // Si on a pas trouvé de meilleure paire, on sort de la boucle
-            if (bestPairIndex === -1) {
+            if (best_pair_index === -1) {
                 break;
             }
 
             // Si on a trouvé une meilleure paire, on la fusionne dans le tableau de tokens
-            const mergedToken =
-                evolutivePairsTokensArray[bestPairIndex] +
-                evolutivePairsTokensArray[bestPairIndex + 1];
+            const merged_token =
+                evolutive_pairs_tokens_array[best_pair_index] +
+                evolutive_pairs_tokens_array[best_pair_index + 1];
 
-            evolutivePairsTokensArray.splice(
-                bestPairIndex,
+            evolutive_pairs_tokens_array.splice(
+                best_pair_index,
                 2,
-                mergedToken
+                merged_token
             );
         }
 
-        const unknownTokenId = this.getUnknownTokenId();
+        const unknown_token_id = this.getUnknownTokenId();
 
         // On parcourt le tableau de tokens avec paires fusionnées intégrées et on créé un tableau de token ids
-        for (const token of evolutivePairsTokensArray) {
-            const tokenId =
+        for (const token of evolutive_pairs_tokens_array) {
+            const token_id =
                 this.vocabulary.get(token);
 
-            tokenIds.push(
-                tokenId ?? unknownTokenId
+            token_ids.push(
+                token_id ?? unknown_token_id
             );
         }
 
 
 
 
-        return tokenIds;
+        return token_ids;
     }
 
     private getUnknownTokenId(): number {
-        const unknownTokenId = this.vocabulary.get(UNKNOWN_TOKEN) as number;
-        if (unknownTokenId === undefined) {
+        const unknown_token_id = this.vocabulary.get(UNKNOWN_TOKEN) as number;
+        if (unknown_token_id === undefined) {
             throw new Error("Tokenizer - Unknown token (<|unk|>) not found in vocabulary");
         }
-        return unknownTokenId;
+        return unknown_token_id;
     }
 
     private buildReverseVocabulary() {
         for (const [key, value] of this.vocabulary.entries()) {
-            this.reverseVocabulary.set(value as number, key);
+            this.reverse_vocabulary.set(value as number, key);
         }
     }
 }

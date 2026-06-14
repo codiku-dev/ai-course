@@ -3,22 +3,27 @@
 import { Tokenizer } from "./tokenizer";
 import fs from "fs";
 
+type Props = {
+  filePath: string;
+  tokenizer: Tokenizer;
+  with_logger?: boolean;
+}
 export class DataSetV3 {
   private readonly encodedTokensArray: number[] = [];
   private readonly tokenizer: Tokenizer;
-
-  constructor(
-    filePath: string,
-    tokenizer: Tokenizer,
-  ) {
+  private with_logger: boolean;
+  constructor({ filePath, tokenizer, with_logger = false }: Props) {
     this.tokenizer = tokenizer;
+    this.with_logger = with_logger;
     this.loadData(filePath);
   }
 
   private loadData(filePath: string) {
     const text = fs.readFileSync(filePath, "utf8");
     const trainingStringArray = text.split(/(?<= )/);
-    console.log("Training string array: ", trainingStringArray);
+    if (this.with_logger) {
+      console.log("Training string array: ", trainingStringArray);
+    }
     for (const word of trainingStringArray) {
       // We flatten the array of tokens to have a single array of tokens
       this.encodedTokensArray.push(...this.tokenizer.encode(word));
@@ -29,8 +34,10 @@ export class DataSetV3 {
       decodedTokens.push(this.tokenizer.decode([token]))
 
     }
-    console.log("Encoded tokens: ", this.encodedTokensArray);
-    console.log("Decoded tokens: ", decodedTokens);
+    if (this.with_logger) {
+      console.log("Encoded tokens: ", this.encodedTokensArray);
+      console.log("Decoded tokens: ", decodedTokens);
+    }
   }
 
   public getEncodedTokensArray(): number[] {
