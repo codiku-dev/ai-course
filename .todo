@@ -1,2 +1,5 @@
-Transformer data loader en tensor et comprendre pourquoi le getLength de  data set est pas bon.
-Il faut un getHeight getWidth et getTokensCount
+
+- Sort alphabetically vocab
+- Change  tokenizer for unicode bytes   
+- Se rensseigner sur les types d'architecture
+
