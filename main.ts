@@ -74,6 +74,9 @@ import { EmbeddingManager } from "./embedding-manager";
 // console.log("\n\n\n")
 // console.table(dataset.toStringOutputTensor())
 
+const EMBEDDINGS_DIMENSIONS = 256;
+const BATCH_WIDTH = 4;
+
 const tokenizer = new Tokenizer({
   with_logger: false,
 });
@@ -85,9 +88,8 @@ tokenizer.loadData({
   path_merge: "merge-pairs-js.json",
 });
 
-const EMBEDDINGS_DIMENSIONS = 256;
 
-const embedding_manager = new EmbeddingManager({ dimensions: EMBEDDINGS_DIMENSIONS });
+const embedding_manager = new EmbeddingManager({ dimensions: EMBEDDINGS_DIMENSIONS, batch_width: BATCH_WIDTH });
 // embedding_manager.initializeEmbeddings({ 
 // vocabulary_file_path: "./vocabulary.json", 
 // output_file_path: "./embeddings.json", 
@@ -103,13 +105,12 @@ const data_set_v3 = new DataSetV3(
   },
 );
 
-const BATCH_WIDTH = 4
 const BATCH_HEIGHT = 8
 const data_loader_v2 = new DataLoaderV2({
   dataset: data_set_v3,
   batch_size: BATCH_HEIGHT,
   shuffle: false,
-  numberOfItemsPerRow: BATCH_WIDTH,
+  context_size: BATCH_WIDTH,
   stride: 1,
 });
 
@@ -121,68 +122,45 @@ data_loader_v2.logLastBatch()
 
 const embeddings = embedding_manager.getEmbeddings();
 // console.log(embeddings.shape)
-const batch_input_embeddings = tf.gather(embeddings, first_batch.inputSamples, 0);
-console.log(batch_input_embeddings.shape)
+const batch_input_embeddings = tf.gather(embeddings, first_batch.input_samples, 0);
+// console.log(batch_input_embeddings.shape)
 // [0, 1, 2, 3]
 
-const position_scalars = tf.add(
-  tf.zeros([BATCH_HEIGHT, BATCH_WIDTH], "float32"),
-  tf.range(0, BATCH_WIDTH, 1, "float32")
-);
-console.log(position_scalars.shape)
-console.log(position_scalars.toString())
-
+// On fait des vecteurs aléatoires entre -1 et 1 pour les positions ( pour éviter de tout tirer vers le haut en choisissant entre 0 et 1)
+const position_vectors = tf.randomUniform([BATCH_WIDTH, EMBEDDINGS_DIMENSIONS], -1, 1)
 /*
-
-[ 8, 4 ]
 Tensor
-    [[0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3],
-     [0, 1, 2, 3]]
+    [[0.6124023, 0.4720555, 0.7288045, ..., 0.5850454, 0.8543764, 0.3275248],
+     [0.7784748, 0.9434558, 0.64477  , ..., 0.7493787, 0.9160827, 0.396835 ],
+     [0.7745323, 0.2990477, 0.6029897, ..., 0.3176321, 0.4668534, 0.3826337],
+     [0.7151411, 0.7744815, 0.6775624, ..., 0.1684889, 0.156136 , 0.0022091]]
 
-     */
-
-
-
-const positional_embeddings_to_apply = position_scalars
-  .expandDims(-1)     // Ajoute une dimension à [8, 4] pour avoir [8, 4, 1]    (-1 signifie la dernière dimension a modifier)  
-  // 
-  /*[[[0], [1], [2], [3]],
-  [[0], [1], [2], [3]],
-    ...
-  [[0], [1], [2], [3]],
-]
-  */                  // [8, 4, 1]
-  .tile([1, 1, EMBEDDINGS_DIMENSIONS]);
-
-/*
-
-.tile([1, 1, 256])
-     ↑  ↑   ↑
-     │  │   └── dim 2 : répéter 256 fois  →  [1] devient [0,0,0,...,0]
-     │  └────── dim 1 : répéter 1 fois   →  inchangé (4 cols)
-     └───────── dim 0 : répéter 1 fois   →  inchangé (8 lignes)
-     */
-
-/* On a au final :
-[8, 4, 256]
 */
 
-const embeddings_with_positional_embeddings = tf.add(batch_input_embeddings, positional_embeddings_to_apply);
-console.log(embeddings_with_positional_embeddings.shape)
-
-console.log("initial input embeddings")
-console.log(batch_input_embeddings.toString())
-console.log("positional embeddings")
-console.log(positional_embeddings_to_apply.toString())
-console.log("embeddings with positional embeddings")
-console.log(embeddings_with_positional_embeddings.toString())
-
 /*
-[8, 4, 512]
+            256 colonnes
+          ┌───────────────────────────┐
+Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0.91, 0.23, ..., 0.66]   ← position 1, Colonne 2 → [0.55, 0.40, 0.71, ..., 0.18]   ← position 2, Colonne 3 → [0.81, 0.29, 0.06, ..., 0.93]   ← position 3
+
+          └───────────────────────────
+
 */
+
+// console.log(position_vectors.shape)
+// console.log(position_vectors.toString())
+
+
+// const input_batch_with_positional_embeddings = tf.add(batch_input_embeddings, position_vectors)
+// console.log("batch before positional embeddings")
+// console.log(batch_input_embeddings.toString())
+// console.log("positional embeddings")
+// console.log(position_vectors.toString())
+// console.log("batch after positional embeddings")
+// console.log(input_batch_with_positional_embeddings.toString())
+
+
+console.log(first_batch.input_samples.dataSync())
+const embedded_batch = embedding_manager.forward(first_batch);
+
+
+// console.log(embedded_batch.input_embeddings.dataSync())

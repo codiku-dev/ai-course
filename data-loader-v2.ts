@@ -3,15 +3,19 @@ import { DataSetV2 } from "./dataset-v2";
 import { DataSetV3 } from "./dataset-v3";
 
 type Batch = {
-  inputSamples: number[][];
-  targetSamples: number[][];
+  input_samples: number[][];
+  target_samples: number[][];
 };
 
+type BatchWithTensors = {
+  input_samples: Tensor<Rank.R2>;
+  target_samples: Tensor<Rank.R2>;
+};
 type Props = {
   dataset: DataSetV3;
   batch_size: number;
   shuffle?: boolean;
-  numberOfItemsPerRow: number;
+  context_size: number;
   stride: number;
 };
 
@@ -20,8 +24,6 @@ export class DataLoader {
   private batch_size: number;
   private current_batch_index = 0;
 
-  private start_index = 0;
-  private end_index = 0;
   // Shuffled index list
   private random_start_index_list: number[] = [];
   private max_batch: number = 0
@@ -32,13 +34,13 @@ export class DataLoader {
   private current_random_start_index = 0;
 
   private current_batch: Batch = {
-    inputSamples: [],
-    targetSamples: [],
+    input_samples: [],
+    target_samples: []
   };
-  constructor({ dataset, batch_size, shuffle = true, numberOfItemsPerRow, stride }: Props) {
+  constructor({ dataset, batch_size, shuffle = true, context_size, stride }: Props) {
     this.dataset = dataset;
     this.batch_size = batch_size;
-    this.tensorWidth = numberOfItemsPerRow;
+    this.tensorWidth = context_size;
     this.stride = stride;
     this.tensorHeight = this.dataset.getLength() / this.tensorWidth;
     this.max_batch = Math.ceil(this.tensorHeight / this.batch_size)
@@ -50,9 +52,9 @@ export class DataLoader {
     }
   }
 
-  next(): { inputSamples: Tensor<Rank.R2>, targetSamples: Tensor<Rank.R2> } {
-    const inputSamples: number[][] = [];
-    const targetSamples: number[][] = [];
+  next(): BatchWithTensors {
+    const input_samples: number[][] = [];
+    const target_samples: number[][] = [];
 
     const encodedTokensArray = this.dataset.getEncodedTokensArray();
 
@@ -68,14 +70,14 @@ export class DataLoader {
       this.current_random_start_index++;
 
       // 0, 0+4 => (0,4)
-      inputSamples.push(
+      input_samples.push(
         encodedTokensArray.slice(
           start,
           start + this.tensorWidth
         )
       );
       // (1,5)
-      targetSamples.push(
+      target_samples.push(
         encodedTokensArray.slice(
           start + 1,
           start + this.tensorWidth + 1
@@ -87,14 +89,12 @@ export class DataLoader {
 
     this.current_batch_index++;
     this.current_batch = {
-      inputSamples,
-      targetSamples,
+      input_samples: input_samples,
+      target_samples: target_samples,
     };
     return {
-      // The reason we use int32 is because the embeddings are int32 but tensor2d 
-      // converts the input to float32 by default so it's going to make the ids float which is not what we want
-      inputSamples: tensor2d(inputSamples, undefined, "int32"),
-      targetSamples: tensor2d(targetSamples, undefined, "int32"),
+      input_samples: tensor2d(input_samples, undefined, "int32"),
+      target_samples: tensor2d(target_samples, undefined, "int32"),
     };
   }
 
@@ -142,14 +142,14 @@ export class DataLoader {
 
     console.log("--- Batch number: ", this.current_batch_index, " ---");
     console.log("Input samples");
-    console.table(this.current_batch.inputSamples.map(decodeTokensSeparately));
+    console.table(this.current_batch.input_samples.map(decodeTokensSeparately));
     console.log("\nTarget samples");
-    console.table(this.current_batch.targetSamples.map(decodeTokensSeparately));
+    console.table(this.current_batch.target_samples.map(decodeTokensSeparately));
   }
   logLastBatch() {
     console.log("Input samples");
-    console.table(this.current_batch.inputSamples);
+    console.table(this.current_batch.input_samples);
     console.log("\nTarget samples");
-    console.table(this.current_batch.targetSamples);
+    console.table(this.current_batch.target_samples);
   }
 }

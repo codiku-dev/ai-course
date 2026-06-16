@@ -1,15 +1,25 @@
-import { Tensor, Rank, randomUniform, tensor2d } from "@tensorflow/tfjs";
+import { Tensor, Rank, randomUniform, tensor2d, add, gather } from "@tensorflow/tfjs";
 import fs from "fs";
+import { Batch } from "./data-loader";
 type Props = {
   dimensions: number;
+  batch_width: number;
 }
+
+type EmbeddedBatch = {
+  input_embeddings: Tensor<Rank.R3>;
+  target_samples: Tensor<Rank.R2>;
+};
 export class EmbeddingManager {
   private embeddings: Tensor<Rank.R2> | null = null;
-
+  private position_vectors: Tensor<Rank.R2> | null = null;
+  private batch_width: number;
   private dimensions: number;
 
-  constructor({ dimensions }: Props) {
+  constructor({ dimensions, batch_width }: Props) {
     this.dimensions = dimensions;
+    this.batch_width = batch_width;
+    this.position_vectors = this.generatePositionVectors(this.batch_width);
   }
   loadExistingEmbeddings(embeddings_file_path: string) {
     const embeddings = fs.readFileSync(embeddings_file_path, 'utf8');
@@ -41,5 +51,28 @@ export class EmbeddingManager {
       throw new Error("Embeddings not initialized");
     }
     return this.embeddings;
+  }
+
+  private generatePositionVectors(batch_size: number): Tensor<Rank.R2> {
+    return randomUniform([batch_size, this.dimensions], -1, 1);
+  }
+
+
+  public forward(batch: Batch): EmbeddedBatch {
+    return this.addPositionVectorsToBatchInput(batch);
+  }
+  private addPositionVectorsToBatchInput(batch: Batch): EmbeddedBatch {
+    if (!this.position_vectors) {
+      throw new Error("Position vectors not initialized");
+    }
+    if (!this.embeddings) {
+      throw new Error("Embeddings not initialized");
+    }
+    // Look up to replace token id by embedding file's vector256
+    const batch_input_embeddings = gather(this.embeddings, batch.input_samples, 0);
+    return {
+      input_embeddings: add(batch_input_embeddings, this.position_vectors),
+      target_samples: batch.target_samples,
+    };
   }
 }

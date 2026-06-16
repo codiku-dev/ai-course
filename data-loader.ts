@@ -1,9 +1,9 @@
 import { Rank, Tensor } from "@tensorflow/tfjs";
 import { DataSetV2 } from "./dataset-v2";
 
-type Batch = {
-  inputSamples: Tensor<Rank.R2>;
-  targetSamples: Tensor<Rank.R2>;
+export type Batch = {
+  input_samples: Tensor<Rank.R2>;
+  target_samples: Tensor<Rank.R2>;
 };
 
 type Props = {
@@ -52,8 +52,8 @@ export class DataLoader {
     const indices = this.sample_index_list.slice(this.start_index, this.end_index);
     // One gather per batch => a single [batch_size, width] tensor for inputs and targets
     this.current_batch = {
-      inputSamples: this.dataset.getInputSamplesTensorByIndexes(indices),
-      targetSamples: this.dataset.getTargetSamplesTensorByIndexes(indices),
+      input_samples: this.dataset.getInputSamplesTensorByIndexes(indices),
+      target_samples: this.dataset.getTargetSamplesTensorByIndexes(indices),
     };
     this.current_batch_index++;
     return this.current_batch;
@@ -68,9 +68,9 @@ export class DataLoader {
     if (!this.current_batch) return;
     console.log(`--- BATCH ${this.current_batch_index} ---`);
     console.log("Input samples");
-    console.table(this.current_batch.inputSamples.arraySync());
+    console.table(this.current_batch.input_samples.arraySync());
     console.log("\nTarget samples");
-    console.table(this.current_batch.targetSamples.arraySync());
+    console.table(this.current_batch.target_samples.arraySync());
   }
 
 
