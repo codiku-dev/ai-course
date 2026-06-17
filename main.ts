@@ -7,7 +7,8 @@ import * as tf from "@tensorflow/tfjs";
 import { DataLoader as DataLoaderV2 } from "./data-loader-v2";
 import { DataSetV3 } from "./dataset-v3";
 import { EmbeddingManager } from "./embedding-manager";
-import { AttentionManager } from "./attention-manager";
+import { SimpleAttentionManager } from "./attention-manager";
+import { tensorGet } from "./utils/tensor-get";
 // const tokenizer = new Tokenizer({
 //   with_logger: false,
 //   target_vocab_size: 4000,
@@ -121,14 +122,14 @@ data_loader_v2.logLastBatch()
 // const secondBatch = dataLoader.next();
 // dataLoader.logLastBatch();
 
-const embeddings = embedding_manager.getEmbeddings();
+// const embeddings = embedding_manager.getEmbeddings();
 // console.log(embeddings.shape)
-const batch_input_embeddings = tf.gather(embeddings, first_batch.input_samples, 0);
+// const batch_input_embeddings = tf.gather(embeddings, first_batch.input_samples, 0);
 // console.log(batch_input_embeddings.shape)
 // [0, 1, 2, 3]
 
 // On fait des vecteurs aléatoires entre -1 et 1 pour les positions ( pour éviter de tout tirer vers le haut en choisissant entre 0 et 1)
-const position_vectors = tf.randomUniform([BATCH_WIDTH, EMBEDDINGS_DIMENSIONS], -1, 1)
+// const position_vectors = tf.randomUniform([BATCH_WIDTH, EMBEDDINGS_DIMENSIONS], -1, 1)
 /*
 Tensor
     [[0.6124023, 0.4720555, 0.7288045, ..., 0.5850454, 0.8543764, 0.3275248],
@@ -159,33 +160,32 @@ Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0
 // console.log("batch after positional embeddings")
 // console.log(input_batch_with_positional_embeddings.toString())
 
+// Add position vectors to batch input
+const batch_with_position_vectors = embedding_manager.forward(first_batch);
 
-const embedded_batch = embedding_manager.forward(first_batch);
+const first_sample_with_position_vectors = tensorGet(
+  batch_with_position_vectors.input_embeddings,
+  [0]
+) as tf.Tensor<tf.Rank.R2>;
 
-/*
-1er tableau = où tu commences sur chaque dimension Ligne 0, Colonne 0, element a l'index 0, tu prend 1 ligne, sa premiere colonne, ses 256 element ( ou -1 pour tout)
-2e tableau = combien tu prends sur chaque dimension
-*/
-const first_sample = embedded_batch.input_embeddings.slice([0, 0, 0], [1, -1, -1]).squeeze();
+const first_sample_query_vector = tensorGet(
+  batch_with_position_vectors.input_embeddings,
+  [0, 0],
+) as tf.Tensor<tf.Rank.R1>;
 
-
-console.log(first_sample.shape)
-console.log("Sample 1 , query 1")
-
-
-// [0, 0] => Pour dim 0 , prend le premier et pour dim 1 prend le premier
-// [1, 256] => Pour dim 0 , coupe apres 1 élement et pour dim 1 va jusqu'au 256 ème elements
-const first_sample_query = first_sample.slice([0, 0], [1, 256]).squeeze();
-console.log(first_sample_query.shape)
-console.log(first_sample_query.toString())
-const queryAsTokenId = first_batch.input_samples.slice([0, 0], [1, 1]).squeeze();
-console.log("Query as token id")
-console.log(queryAsTokenId.toString())
-console.log("Query as token")
-console.log(tokenizer.decode([queryAsTokenId.dataSync()[0]]))
-const attention_manager = new AttentionManager();
+console.log("first_sample_with_position_vectors shape", first_sample_with_position_vectors.shape)
+console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
+// console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
+// console.log(first_sample_query_vector.toString())
+// const queryAsTokenId = first_batch.input_samples.slice([0, 0], [1, 1]).squeeze();
+// console.log("Query as token id")
+// console.log(queryAsTokenId.toString())
+// console.log("Query as token")
+// console.log(tokenizer.decode([queryAsTokenId.dataSync()[0]]))
+const attention_manager = new SimpleAttentionManager();
 //todo attention manager calculate attention for query
-
+const attention_scores_for_query = attention_manager.calculateAttentionForQuery(first_sample_query_vector, first_sample_with_position_vectors);
+// console.log(attention_scores_for_query.length)
 
 /*
 [8, 4, 256]

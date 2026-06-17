@@ -6,7 +6,7 @@ type Props = {
   batch_width: number;
 }
 
-type EmbeddedBatch = {
+export type EmbeddedBatch = {
   input_embeddings: Tensor<Rank.R3>;
   target_samples: Tensor<Rank.R2>;
 };

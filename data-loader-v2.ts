@@ -7,7 +7,7 @@ type Batch = {
   target_samples: number[][];
 };
 
-type BatchWithTensors = {
+export type BatchWithTensors = {
   input_samples: Tensor<Rank.R2>;
   target_samples: Tensor<Rank.R2>;
 };
