@@ -7,6 +7,7 @@ import * as tf from "@tensorflow/tfjs";
 import { DataLoader as DataLoaderV2 } from "./data-loader-v2";
 import { DataSetV3 } from "./dataset-v3";
 import { EmbeddingManager } from "./embedding-manager";
+import { AttentionManager } from "./attention-manager";
 // const tokenizer = new Tokenizer({
 //   with_logger: false,
 //   target_vocab_size: 4000,
@@ -159,8 +160,37 @@ Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0
 // console.log(input_batch_with_positional_embeddings.toString())
 
 
-console.log(first_batch.input_samples.dataSync())
 const embedded_batch = embedding_manager.forward(first_batch);
 
+/*
+1er tableau = où tu commences sur chaque dimension Ligne 0, Colonne 0, element a l'index 0, tu prend 1 ligne, sa premiere colonne, ses 256 element ( ou -1 pour tout)
+2e tableau = combien tu prends sur chaque dimension
+*/
+const first_sample = embedded_batch.input_embeddings.slice([0, 0, 0], [1, -1, -1]).squeeze();
 
-// console.log(embedded_batch.input_embeddings.dataSync())
+
+console.log(first_sample.shape)
+console.log("Sample 1 , query 1")
+
+
+// [0, 0] => Pour dim 0 , prend le premier et pour dim 1 prend le premier
+// [1, 256] => Pour dim 0 , coupe apres 1 élement et pour dim 1 va jusqu'au 256 ème elements
+const first_sample_query = first_sample.slice([0, 0], [1, 256]).squeeze();
+console.log(first_sample_query.shape)
+console.log(first_sample_query.toString())
+const queryAsTokenId = first_batch.input_samples.slice([0, 0], [1, 1]).squeeze();
+console.log("Query as token id")
+console.log(queryAsTokenId.toString())
+console.log("Query as token")
+console.log(tokenizer.decode([queryAsTokenId.dataSync()[0]]))
+const attention_manager = new AttentionManager();
+//todo attention manager calculate attention for query
+
+
+/*
+[8, 4, 256]
+embeddings[ligne][colonne][caseDuVecteur]
+          ↑        ↑            ↑
+       batch    token       dim 256
+
+*/
