@@ -1,4 +1,3 @@
-import { Tokenizer } from "./tokenizer";
 import { DataSetV1 } from "./dataset-v1";
 import { DataSetV2 } from "./dataset-v2";
 import fs from "fs";
@@ -8,6 +7,8 @@ import { DataLoader as DataLoaderV2 } from "./data-loader-v2";
 import { DataSetV3 } from "./dataset-v3";
 import { EmbeddingManager } from "./embedding-manager";
 import { SimpleAttentionManager } from "./attention-manager";
+import { Tokenizer } from "./tokenizer";
+
 // const tokenizer = new Tokenizer({
 //   with_logger: false,
 //   target_vocab_size: 4000,
@@ -75,7 +76,7 @@ import { SimpleAttentionManager } from "./attention-manager";
 // console.log("\n\n\n")
 // console.table(dataset.toStringOutputTensor())
 
-const EMBEDDINGS_DIMENSIONS = 256;
+const EMBEDDINGS_DIMENSIONS = 6;
 const BATCH_WIDTH = 4;
 
 const tokenizer = new Tokenizer({
@@ -89,24 +90,24 @@ tokenizer.loadData({
   path_merge: "merge-pairs-js.json",
 });
 
+const embedding_manager = new EmbeddingManager({
+  dimensions: EMBEDDINGS_DIMENSIONS,
+  batch_width: BATCH_WIDTH,
+});
+// embedding_manager.initializeEmbeddings({
+//   vocabulary_file_path: "./vocabulary.json",
+//   output_file_path: `./embeddings-${EMBEDDINGS_DIMENSIONS}.json`,
+//   dimensions: EMBEDDINGS_DIMENSIONS
+// });
+embedding_manager.loadExistingEmbeddings(`./embeddings-${EMBEDDINGS_DIMENSIONS}.json`);
 
-const embedding_manager = new EmbeddingManager({ dimensions: EMBEDDINGS_DIMENSIONS, batch_width: BATCH_WIDTH });
-// embedding_manager.initializeEmbeddings({ 
-// vocabulary_file_path: "./vocabulary.json", 
-// output_file_path: "./embeddings.json", 
-// dimensions: 256 });
-embedding_manager.loadExistingEmbeddings("./embeddings.json");
+const data_set_v3 = new DataSetV3({
+  filePath: "data/the-verdict.txt",
+  tokenizer: tokenizer,
+  with_logger: false,
+});
 
-
-const data_set_v3 = new DataSetV3(
-  {
-    filePath: "data/the-verdict.txt",
-    tokenizer: tokenizer,
-    with_logger: false
-  },
-);
-
-const BATCH_HEIGHT = 8
+const BATCH_HEIGHT = 8;
 const data_loader_v2 = new DataLoaderV2({
   dataset: data_set_v3,
   batch_size: BATCH_HEIGHT,
@@ -116,7 +117,7 @@ const data_loader_v2 = new DataLoaderV2({
 });
 
 const first_batch = data_loader_v2.next();
-data_loader_v2.logLastBatch()
+data_loader_v2.logLastBatch();
 // console.log(first_batch.inputSamples.shape)
 // const secondBatch = dataLoader.next();
 // dataLoader.logLastBatch();
@@ -150,7 +151,6 @@ Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0
 // console.log(position_vectors.shape)
 // console.log(position_vectors.toString())
 
-
 // const input_batch_with_positional_embeddings = tf.add(batch_input_embeddings, position_vectors)
 // console.log("batch before positional embeddings")
 // console.log(batch_input_embeddings.toString())
@@ -162,18 +162,20 @@ Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0
 // Add position vectors to batch input
 const batch_with_position_vectors = embedding_manager.forward(first_batch);
 
-const first_sample_with_position_vectors = batch_with_position_vectors.input_embeddings
-  .slice([0, 0, 0], [1, -1, -1])
-  .squeeze() as tf.Tensor<tf.Rank.R2>;
+const first_sample_with_position_vectors =
+  batch_with_position_vectors.input_embeddings
+    .slice([0, 0, 0], [1, -1, -1])
+    .squeeze() as tf.Tensor<tf.Rank.R2>;
 
 const first_sample_query_vector = first_sample_with_position_vectors
   .slice([0, 0], [1, -1])
   .squeeze() as tf.Tensor<tf.Rank.R1>;
 
-
-
-console.log("first_sample_with_position_vectors shape", first_sample_with_position_vectors.shape)
-console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
+console.log(
+  "first_sample_with_position_vectors shape",
+  first_sample_with_position_vectors.shape,
+);
+console.log("first_sample_query_vector shape", first_sample_query_vector.shape);
 // console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
 // console.log(first_sample_query_vector.toString())
 // const queryAsTokenId = first_batch.input_samples.slice([0, 0], [1, 1]).squeeze();
@@ -183,7 +185,10 @@ console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
 // console.log(tokenizer.decode([queryAsTokenId.dataSync()[0]]))
 const attention_manager = new SimpleAttentionManager();
 //todo attention manager calculate attention for query
-const attention_scores_for_query = attention_manager.calculateAttentionForQuery(first_sample_query_vector, first_sample_with_position_vectors);
+const attention_scores_for_query = attention_manager.calculateAttentionForQuery(
+  first_sample_query_vector,
+  first_sample_with_position_vectors,
+);
 // console.log(attention_scores_for_query.length)
 
 /*
