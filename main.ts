@@ -8,7 +8,6 @@ import { DataLoader as DataLoaderV2 } from "./data-loader-v2";
 import { DataSetV3 } from "./dataset-v3";
 import { EmbeddingManager } from "./embedding-manager";
 import { SimpleAttentionManager } from "./attention-manager";
-import { tensorGet } from "./utils/tensor-get";
 // const tokenizer = new Tokenizer({
 //   with_logger: false,
 //   target_vocab_size: 4000,
@@ -163,15 +162,15 @@ Colonne 0 → [0.49, 0.12, 0.88, ..., 0.34]   ← position 0 , Colonne 1[0.07, 0
 // Add position vectors to batch input
 const batch_with_position_vectors = embedding_manager.forward(first_batch);
 
-const first_sample_with_position_vectors = tensorGet(
-  batch_with_position_vectors.input_embeddings,
-  [0]
-) as tf.Tensor<tf.Rank.R2>;
+const first_sample_with_position_vectors = batch_with_position_vectors.input_embeddings
+  .slice([0, 0, 0], [1, -1, -1])
+  .squeeze() as tf.Tensor<tf.Rank.R2>;
 
-const first_sample_query_vector = tensorGet(
-  batch_with_position_vectors.input_embeddings,
-  [0, 0],
-) as tf.Tensor<tf.Rank.R1>;
+const first_sample_query_vector = first_sample_with_position_vectors
+  .slice([0, 0], [1, -1])
+  .squeeze() as tf.Tensor<tf.Rank.R1>;
+
+
 
 console.log("first_sample_with_position_vectors shape", first_sample_with_position_vectors.shape)
 console.log("first_sample_query_vector shape", first_sample_query_vector.shape)
