@@ -31,7 +31,7 @@ export class SimpleAttentionManager {
         const sum_of_exponential_weights = tf.sum(exponential_weights)
         const naive_softmax = tf.div(exponential_weights, sum_of_exponential_weights)
         console.log("🔍 ~ softMaxNaive ~ attention-manager.ts:32 ~ sum_of_exponential_weights:", naive_softmax.toString());
-
+        return naive_softmax
     }
 
 
