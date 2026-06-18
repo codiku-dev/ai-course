@@ -28,7 +28,7 @@ export class SimpleAttentionManager {
   private applySoftMax(attention_weights: Tensor<Rank.R1>) {
     // Formula pytorch should be something like  [ (e(x1-max)) / sum , (e(x2-max)) / sum ,...,  (e(xn-max)) / sum  ]
     const max_weight = tf.max(attention_weights)
-    // naive version that does not remove max
+
     const numerators = tf.exp(tf.sub(attention_weights, max_weight))
     // const numerators = tf.exp(tf.sub(attention_weights, max_weight))
     const denominators = tf.sum(numerators)
