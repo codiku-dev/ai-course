@@ -185,10 +185,10 @@ console.log("first_sample_query_vector shape", first_sample_query_vector.shape);
 // console.log(tokenizer.decode([queryAsTokenId.dataSync()[0]]))
 const attention_manager = new SimpleAttentionManager();
 //todo attention manager calculate attention for query
-const attention_scores_for_query = attention_manager.calculateAttentionForQuery(
-  first_sample_query_vector,
-  first_sample_with_position_vectors,
-);
+// const attention_scores_for_query = attention_manager.calculateAttentionForQuery(
+//   first_sample_query_vector,
+//   first_sample_with_position_vectors,
+// );
 // console.log(attention_scores_for_query.length)
 
 /*
@@ -198,3 +198,7 @@ embeddings[ligne][colonne][caseDuVecteur]
        batch    token       dim 256
 
 */
+
+const attention_scores_for_sample = attention_manager.calculateAttentionForSample(
+  first_sample_with_position_vectors,
+);
