@@ -99,7 +99,9 @@ const embedding_manager = new EmbeddingManager({
 //   output_file_path: `./embeddings-${EMBEDDINGS_DIMENSIONS}.json`,
 //   dimensions: EMBEDDINGS_DIMENSIONS
 // });
-embedding_manager.loadExistingEmbeddings(`./embeddings-${EMBEDDINGS_DIMENSIONS}.json`);
+embedding_manager.loadExistingEmbeddings(
+  `./embeddings-${EMBEDDINGS_DIMENSIONS}.json`,
+);
 
 const data_set_v3 = new DataSetV3({
   filePath: "data/the-verdict.txt",
@@ -199,6 +201,21 @@ embeddings[ligne][colonne][caseDuVecteur]
 
 */
 
-const attention_scores_for_sample = attention_manager.calculateAttentionForSample(
-  first_sample_with_position_vectors,
+// const attention_scores_for_sample =
+//   attention_manager.calculateAttentionForSample(
+//     first_sample_with_position_vectors,
+//   );
+// console.log(
+//   "attention_scores_for_sample",
+//   attention_scores_for_sample.toString(),
+// );
+
+console.log(
+  "BATCH is ",
+  batch_with_position_vectors.input_embeddings.toString(),
 );
+const attention_score_for_batch = attention_manager.calculateAttentionForBatch(
+  batch_with_position_vectors.input_embeddings,
+);
+
+console.log("attention_score_for_batch", attention_score_for_batch.toString());
