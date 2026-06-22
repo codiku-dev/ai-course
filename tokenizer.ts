@@ -230,4 +230,8 @@ export class Tokenizer {
             this.reverse_vocabulary.set(value as number, key);
         }
     }
+
+    getVocabulary() {
+        return this.vocabulary
+    }
 }

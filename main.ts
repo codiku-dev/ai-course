@@ -8,6 +8,7 @@ import { DataSetV3 } from "./dataset-v3";
 import { EmbeddingManager } from "./embedding-manager";
 import { SimpleAttentionManager } from "./attention-manager";
 import { Tokenizer } from "./tokenizer";
+import { NeuralLayer, NeuralNetwork } from "./neural-layer";
 
 // const tokenizer = new Tokenizer({
 //   with_logger: false,
@@ -219,3 +220,8 @@ const attention_score_for_batch = attention_manager.calculateAttentionForBatch(
 );
 
 console.log("attention_score_for_batch", attention_score_for_batch.toString());
+
+const neuralNetwork = new NeuralNetwork({
+  token_vector_dimensions: EMBEDDINGS_DIMENSIONS,
+  vocabulary_size: tokenizer.getVocabulary().size
+})
